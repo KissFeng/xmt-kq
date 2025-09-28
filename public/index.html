@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XMT</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>2025级大学生新媒体中心考勤管理系统</h1>
+            <nav>
+                <button class="nav-btn active" onclick="showSection('dashboard')">首页</button>
+                <button class="nav-btn" onclick="showSection('students')">学生管理</button>
+                <button class="nav-btn" onclick="showSection('attendance')">考勤分数管理</button>
+                <button class="nav-btn" onclick="showSection('stats')">统计报表</button>
+                <button class="nav-btn" onclick="showLoginModal()" id="loginBtn">登录</button>
+            </nav>
+        </header>
+
+        <main>
+            <!-- 首页 -->
+            <section id="dashboard" class="section active">
+                <h2>系统概览</h2>
+                <div class="dashboard-cards">
+                    <div class="card">
+                        <h3>总用户数</h3>
+                        <span id="totalUsers">-</span>
+                    </div>
+                    <div class="card">
+                        <h3>今日考勤</h3>
+                        <span id="todayAttendance">-</span>
+                    </div>
+                    <div class="card">
+                        <h3>本月总分数</h3>
+                        <span id="monthlyRate">-</span>
+                    </div>
+                    <div class="card">
+                        <h3>部门数量</h3>
+                        <span id="totalDepartments">-</span>
+                    </div>
+                </div>
+                
+                <div class="department-stats">
+                    <h3>各部门考勤情况</h3>
+                    <div id="departmentStatsContainer">
+                        <!-- 部门统计数据将在这里动态加载 -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 学生管理 -->
+            <section id="students" class="section">
+                <div class="section-header">
+                    <h2>学生管理</h2>
+                    <div class="filters">
+                        <select id="studentCollegeFilter">
+                            <option value="">所有学院</option>
+                        </select>
+                        <select id="studentDepartmentFilter">
+                            <option value="">所有部门</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="loadStudents()">查询</button>
+                        <button class="btn btn-primary" onclick="showStudentModal()">添加学生</button>
+                        <button class="btn btn-success" onclick="showImportModal()">Excel导入</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="studentsTable">
+                        <thead>
+                            <tr>
+                                <th>学号</th>
+                                <th>姓名</th>
+                                <th>学院</th>
+                                <th>部门</th>
+                                <th>手机号</th>
+                                <th>是否在职</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 考勤分数管理 -->
+            <section id="attendance" class="section">
+                <div class="section-header">
+                    <h2>考勤分数管理</h2>
+                    <div class="filters">
+                        <select id="studentFilter">
+                            <option value="">所有学生</option>
+                        </select>
+                        <input type="date" id="dateFilter" placeholder="选择日期">
+                        <button class="btn btn-secondary" onclick="loadAttendanceScores()">查询</button>
+                        <button class="btn btn-primary" onclick="showAttendanceScoreModal()">添加考勤分数</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="attendanceScoresTable">
+                        <thead>
+                            <tr>
+                                <th>学号</th>
+                                <th>姓名</th>
+                                <th>学院</th>
+                                <th>部门</th>
+                                <th>日期</th>
+                                <th>分数变化</th>
+                                <th>原因</th>
+                                <th>操作员</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 统计报表 -->
+            <section id="stats" class="section">
+                <div class="section-header">
+                    <h2>统计报表</h2>
+                    <div class="filters">
+                        <select id="statsDepartmentFilter">
+                            <option value="">所有部门</option>
+                        </select>
+                        <input type="month" id="statsMonthFilter" value="">
+                        <button class="btn btn-secondary" onclick="loadStats()">查询</button>
+                        <button class="btn btn-success" onclick="exportToExcel()">导出Excel</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="statsTable">
+                        <thead>
+                            <tr>
+                                <th>学号</th>
+                                <th>姓名</th>
+                                <th>学院</th>
+                                <th>部门</th>
+                                <th>考勤分数</th>
+                                <th>记录次数</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 学生模态框 -->
+    <div id="studentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="studentModalTitle">添加学生</h3>
+                <span class="close" onclick="closeStudentModal()">&times;</span>
+            </div>
+            <form id="studentForm">
+                <input type="hidden" id="studentId">
+                <div class="form-group">
+                    <label for="studentIdInput">学号 *</label>
+                    <input type="text" id="studentIdInput" required>
+                </div>
+                <div class="form-group">
+                    <label for="studentName">姓名 *</label>
+                    <input type="text" id="studentName" required>
+                </div>
+                <div class="form-group">
+                    <label for="studentCollege">学院 *</label>
+                    <select id="studentCollege" required>
+                        <option value="">请选择学院</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="studentDepartment">部门 *</label>
+                    <select id="studentDepartment" required>
+                        <option value="">请选择部门</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="studentPhone">手机号</label>
+                    <input type="tel" id="studentPhone">
+                </div>
+                <div class="form-group">
+                    <label for="studentStatus">是否在职</label>
+                    <select id="studentStatus">
+                        <option value="active">在职</option>
+                        <option value="inactive">离职</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeStudentModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 考勤分数模态框 -->
+    <div id="attendanceScoreModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="attendanceScoreModalTitle">添加考勤分数记录</h3>
+                <span class="close" onclick="closeAttendanceScoreModal()">&times;</span>
+            </div>
+            <form id="attendanceScoreForm">
+                <div class="form-group">
+                    <label for="attendanceStudent">学生 *</label>
+                    <select id="attendanceStudent" required>
+                        <option value="">请选择学生</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="attendanceScoreDate">日期 *</label>
+                    <input type="date" id="attendanceScoreDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="scoreChange">分数变化 *</label>
+                    <input type="number" id="scoreChange" required placeholder="正数为加分，负数为扣分">
+                </div>
+                <div class="form-group">
+                    <label for="scoreReason">加减分原因 *</label>
+                    <textarea id="scoreReason" rows="3" required placeholder="请详细说明加减分原因"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="operator">操作员 *</label>
+                    <input type="text" id="operator" placeholder="操作员姓名" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAttendanceScoreModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Excel导入模态框 -->
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Excel导入学生</h3>
+                <span class="close" onclick="closeImportModal()">&times;</span>
+            </div>
+            <form id="importForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="excelFile">选择Excel文件 *</label>
+                    <input type="file" id="excelFile" accept=".xlsx,.xls" required>
+                    <small class="form-text">支持.xlsx和.xls格式，请确保Excel文件包含：学号、姓名、学院、部门、手机号、是否在职等列</small>
+                </div>
+                <div class="form-group">
+                    <label>Excel模板下载：</label>
+                    <button type="button" class="btn btn-info" onclick="downloadTemplate()">下载模板</button>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeImportModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">开始导入</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 登录模态框 -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content login-modal">
+            <div class="modal-header">
+                <h3>管理员登录</h3>
+                <span class="close" onclick="closeLoginModal()">&times;</span>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <input type="text" id="username" placeholder="请输入用户名" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" placeholder="请输入密码" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">登录</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 用户信息显示 -->
+    <div id="userInfo" class="user-info" style="display: none;">
+        <span id="userName"></span>
+        <button class="btn btn-secondary" onclick="logout()">退出登录</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
