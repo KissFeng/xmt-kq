@@ -8,7 +8,8 @@ let currentUser = null;
 document.addEventListener('DOMContentLoaded', function() {
     // 设置默认日期
     const today = new Date().toISOString().slice(0, 10);
-    document.getElementById('dateFilter').value = today;
+    // 考勤分数管理的日期筛选器默认为空，显示所有时间段
+    // document.getElementById('dateFilter').value = today;
     document.getElementById('attendanceScoreDate').value = today;
     
     // 设置默认月份
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadStudents();
     loadColleges();
     loadDepartments();
+    loadStudentsForAttendance(); // 加载考勤分数管理的学生筛选器
     loadAttendanceScores();
     loadStats();
 });
@@ -60,24 +62,11 @@ async function checkLoginStatus() {
 }
 
 function showPermissionNotice() {
-    const notices = document.querySelectorAll('.permission-notice');
-    if (notices.length === 0) {
-        // 在主要内容区域添加权限提示
-        const main = document.querySelector('main');
-        const notice = document.createElement('div');
-        notice.className = 'permission-notice';
-        notice.innerHTML = '🔒 您当前处于只读模式，登录后可进行修改操作';
-        main.insertBefore(notice, main.firstChild);
-    }
-    
     // 禁用所有修改按钮
     disableModifyButtons();
 }
 
 function hidePermissionNotice() {
-    const notices = document.querySelectorAll('.permission-notice');
-    notices.forEach(notice => notice.remove());
-    
     // 启用所有修改按钮
     enableModifyButtons();
 }
@@ -109,8 +98,20 @@ function enableModifyButtons() {
 function showUserInfo() {
     const userInfo = document.getElementById('userInfo');
     const userName = document.getElementById('userName');
+    const loginBtn = document.getElementById('loginBtn');
+    
     userName.textContent = `欢迎，${currentUser.name}`;
-    userInfo.style.display = 'flex';
+    userInfo.style.display = 'none'; // 隐藏右上角用户信息弹窗
+    loginBtn.textContent = '退出登录'; // 将登录按钮改为退出按钮
+    loginBtn.onclick = logout; // 绑定退出登录功能
+}
+
+function toggleLogin() {
+    if (isLoggedIn) {
+        logout();
+    } else {
+        showLoginModal();
+    }
 }
 
 function showLoginModal() {
@@ -164,6 +165,10 @@ function logout() {
     localStorage.removeItem('authToken');
     isLoggedIn = false;
     currentUser = null;
+    
+    const loginBtn = document.getElementById('loginBtn');
+    loginBtn.textContent = '登录';
+    loginBtn.onclick = toggleLogin;
     
     document.getElementById('userInfo').style.display = 'none';
     showPermissionNotice();
@@ -533,12 +538,25 @@ async function loadAttendanceScores() {
         const studentFilter = document.getElementById('studentFilter').value;
         const dateFilter = document.getElementById('dateFilter').value;
         
-        let url = '/api/attendance-scores?';
-        if (studentFilter) url += `student_id=${studentFilter}&`;
-        if (dateFilter) url += `start_date=${dateFilter}&end_date=${dateFilter}&`;
+        // 默认显示所有学生所有时间段的记录
+        let url = '/api/attendance-scores';
         
+        // 只有在用户主动选择筛选条件时才添加筛选参数
+        if (studentFilter || dateFilter) {
+            url += '?';
+            if (studentFilter) url += `student_id=${studentFilter}&`;
+            if (dateFilter) url += `start_date=${dateFilter}&end_date=${dateFilter}&`;
+        }
+        
+        console.log('Loading attendance scores from:', url);
         const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const attendanceScores = await response.json();
+        console.log('Loaded attendance scores:', attendanceScores);
         
         const tbody = document.querySelector('#attendanceScoresTable tbody');
         tbody.innerHTML = '';
@@ -576,8 +594,15 @@ async function loadStudentsForAttendance() {
         const response = await fetch('/api/students');
         const students = await response.json();
         
+        console.log('Loaded students for attendance:', students);
+        
         const studentFilter = document.getElementById('studentFilter');
         const attendanceStudent = document.getElementById('attendanceStudent');
+        
+        if (!studentFilter || !attendanceStudent) {
+            console.error('Student filter elements not found');
+            return;
+        }
         
         studentFilter.innerHTML = '<option value="">所有学生</option>';
         attendanceStudent.innerHTML = '<option value="">请选择学生</option>';
@@ -593,6 +618,8 @@ async function loadStudentsForAttendance() {
             option2.textContent = `${student.name} (${student.student_id})`;
             attendanceStudent.appendChild(option2);
         });
+        
+        console.log('Student filter populated with', students.length, 'students');
     } catch (error) {
         console.error('加载学生列表失败:', error);
     }
@@ -802,16 +829,15 @@ function showMessage(message, type = 'info') {
     messageDiv.className = `message ${type}`;
     messageDiv.textContent = message;
     
-    // 插入到页面顶部
-    const main = document.querySelector('main');
-    main.insertBefore(messageDiv, main.firstChild);
+    // 插入到body中作为浮窗
+    document.body.appendChild(messageDiv);
     
-    // 3秒后自动移除
+    // 2秒后自动移除
     setTimeout(() => {
         if (messageDiv.parentNode) {
             messageDiv.remove();
         }
-    }, 3000);
+    }, 2000);
 }
 
 // Excel导入功能
