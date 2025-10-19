@@ -9,10 +9,124 @@ const XLSX = require('xlsx');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const https = require('https');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// 飞书机器人配置
+const FEISHU_WEBHOOK_URL = 'https://open.feishu.cn/open-apis/bot/v2/hook/b75e2592-a969-48b3-8958-428539fe9784';
+
+// 飞书机器人通知函数
+const sendFeishuNotification = (operation, details) => {
+    // 根据操作类型选择不同的颜色和图标
+    let color = "blue";
+    let icon = "📝";
+    
+    switch(operation) {
+        case "新增学生":
+            color = "green";
+            icon = "➕";
+            break;
+        case "修改学生":
+            color = "orange";
+            icon = "✏️";
+            break;
+        case "删除学生":
+            color = "red";
+            icon = "🗑️";
+            break;
+        case "新增考勤记录":
+            color = "green";
+            icon = "📊";
+            break;
+        case "删除考勤记录":
+            color = "red";
+            icon = "🗑️";
+            break;
+        case "Excel批量导入":
+            color = "purple";
+            icon = "📋";
+            break;
+    }
+
+    const message = {
+        msg_type: "interactive",
+        card: {
+            config: {
+                wide_screen_mode: true
+            },
+            header: {
+                template: color,
+                title: {
+                    content: `${icon} 考勤系统数据库操作通知`,
+                    tag: "plain_text"
+                }
+            },
+            elements: [
+                {
+                    tag: "div",
+                    text: {
+                        content: `**操作类型：** ${operation}`,
+                        tag: "lark_md"
+                    }
+                },
+                {
+                    tag: "div",
+                    text: {
+                        content: `**操作时间：** ${new Date().toLocaleString('zh-CN')}`,
+                        tag: "lark_md"
+                    }
+                },
+                {
+                    tag: "div",
+                    text: {
+                        content: `**详细信息：**\n${details}`,
+                        tag: "lark_md"
+                    }
+                },
+                {
+                    tag: "hr"
+                },
+                {
+                    tag: "div",
+                    text: {
+                        content: "🤖 系统自动通知",
+                        tag: "plain_text"
+                    }
+                }
+            ]
+        }
+    };
+
+    const postData = JSON.stringify(message);
+    
+    const options = {
+        hostname: 'open.feishu.cn',
+        port: 443,
+        path: '/open-apis/bot/v2/hook/b75e2592-a969-48b3-8958-428539fe9784',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
+        }
+    };
+
+    const req = https.request(options, (res) => {
+        console.log(`飞书通知发送状态: ${res.statusCode}`);
+        res.on('data', (d) => {
+            console.log('飞书通知响应:', d.toString());
+        });
+    });
+
+    req.on('error', (e) => {
+        console.error('飞书通知发送失败:', e);
+    });
+
+    req.write(postData);
+    req.end();
+};
 
 // 中间件
 app.use(cors());
@@ -212,6 +326,11 @@ app.post('/api/students', authenticateToken, (req, res) => {
             console.error('创建学生失败:', err);
             return res.status(500).json({ error: '创建学生失败' });
         }
+        
+        // 发送飞书通知
+        const details = `**学生姓名：** ${name}\n**学号：** ${student_id}\n**学院ID：** ${college_id}\n**部门ID：** ${department_id}\n**状态：** ${status}`;
+        sendFeishuNotification('新增学生', details);
+        
         res.json({ id: results.insertId, message: '学生创建成功' });
     });
 });
@@ -220,36 +339,78 @@ app.post('/api/students', authenticateToken, (req, res) => {
 app.put('/api/students/:id', authenticateToken, (req, res) => {
     const { id } = req.params;
     const { student_id, name, college_id, department_id, phone, status } = req.body;
-    const query = `
-        UPDATE students 
-        SET student_id = ?, name = ?, college_id = ?, department_id = ?, phone = ?, status = ?
-        WHERE id = ?
-    `;
-    pool.execute(query, [student_id, name, college_id, department_id, phone, status, id], (err, results) => {
+    
+    // 先获取原学生信息用于通知
+    const getStudentQuery = 'SELECT * FROM students WHERE id = ?';
+    pool.execute(getStudentQuery, [id], (err, studentResults) => {
         if (err) {
-            console.error('更新学生失败:', err);
-            return res.status(500).json({ error: '更新学生失败' });
+            console.error('获取学生信息失败:', err);
+            return res.status(500).json({ error: '获取学生信息失败' });
         }
-        if (results.affectedRows === 0) {
+        
+        if (studentResults.length === 0) {
             return res.status(404).json({ error: '学生不存在' });
         }
-        res.json({ message: '学生更新成功' });
+        
+        const oldStudent = studentResults[0];
+        
+        const query = `
+            UPDATE students 
+            SET student_id = ?, name = ?, college_id = ?, department_id = ?, phone = ?, status = ?
+            WHERE id = ?
+        `;
+        pool.execute(query, [student_id, name, college_id, department_id, phone, status, id], (err, results) => {
+            if (err) {
+                console.error('更新学生失败:', err);
+                return res.status(500).json({ error: '更新学生失败' });
+            }
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ error: '学生不存在' });
+            }
+            
+            // 发送飞书通知
+            const details = `**学生姓名：** ${oldStudent.name} → ${name}\n**学号：** ${oldStudent.student_id} → ${student_id}\n**学院ID：** ${oldStudent.college_id} → ${college_id}\n**部门ID：** ${oldStudent.department_id} → ${department_id}\n**状态：** ${oldStudent.status} → ${status}`;
+            sendFeishuNotification('修改学生', details);
+            
+            res.json({ message: '学生更新成功' });
+        });
     });
 });
 
 // 删除学生
 app.delete('/api/students/:id', authenticateToken, (req, res) => {
     const { id } = req.params;
-    const query = 'DELETE FROM students WHERE id = ?';
-    pool.execute(query, [id], (err, results) => {
+    
+    // 先获取学生信息用于通知
+    const getStudentQuery = 'SELECT * FROM students WHERE id = ?';
+    pool.execute(getStudentQuery, [id], (err, studentResults) => {
         if (err) {
-            console.error('删除学生失败:', err);
-            return res.status(500).json({ error: '删除学生失败' });
+            console.error('获取学生信息失败:', err);
+            return res.status(500).json({ error: '获取学生信息失败' });
         }
-        if (results.affectedRows === 0) {
+        
+        if (studentResults.length === 0) {
             return res.status(404).json({ error: '学生不存在' });
         }
-        res.json({ message: '学生删除成功' });
+        
+        const student = studentResults[0];
+        
+        const query = 'DELETE FROM students WHERE id = ?';
+        pool.execute(query, [id], (err, results) => {
+            if (err) {
+                console.error('删除学生失败:', err);
+                return res.status(500).json({ error: '删除学生失败' });
+            }
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ error: '学生不存在' });
+            }
+            
+            // 发送飞书通知
+            const details = `**学生姓名：** ${student.name}\n**学号：** ${student.student_id}\n**学院ID：** ${student.college_id}\n**部门ID：** ${student.department_id}`;
+            sendFeishuNotification('删除学生', details);
+            
+            res.json({ message: '学生删除成功' });
+        });
     });
 });
 
@@ -326,16 +487,36 @@ app.post('/api/attendance-scores', authenticateToken, (req, res) => {
         return res.status(400).json({ error: '所有字段都是必填的，包括操作员' });
     }
     
-    const query = `
-        INSERT INTO attendance_scores (student_id, score_change, reason, date, operator) 
-        VALUES (?, ?, ?, ?, ?)
-    `;
-    pool.execute(query, [student_id, score_change, reason, date, operator], (err, results) => {
+    // 先获取学生信息用于通知
+    const getStudentQuery = 'SELECT s.*, c.name as college_name, d.name as department_name FROM students s LEFT JOIN colleges c ON s.college_id = c.id LEFT JOIN departments d ON s.department_id = d.id WHERE s.id = ?';
+    pool.execute(getStudentQuery, [student_id], (err, studentResults) => {
         if (err) {
-            console.error('创建考勤分数记录失败:', err);
-            return res.status(500).json({ error: '创建考勤分数记录失败' });
+            console.error('获取学生信息失败:', err);
+            return res.status(500).json({ error: '获取学生信息失败' });
         }
-        res.json({ message: '考勤分数记录保存成功' });
+        
+        if (studentResults.length === 0) {
+            return res.status(404).json({ error: '学生不存在' });
+        }
+        
+        const student = studentResults[0];
+        
+        const query = `
+            INSERT INTO attendance_scores (student_id, score_change, reason, date, operator) 
+            VALUES (?, ?, ?, ?, ?)
+        `;
+        pool.execute(query, [student_id, score_change, reason, date, operator], (err, results) => {
+            if (err) {
+                console.error('创建考勤分数记录失败:', err);
+                return res.status(500).json({ error: '创建考勤分数记录失败' });
+            }
+            
+            // 发送飞书通知
+            const details = `**学生姓名：** ${student.name}\n**学号：** ${student.student_id}\n**学院：** ${student.college_name}\n**部门：** ${student.department_name}\n**分数变化：** ${score_change > 0 ? '+' : ''}${score_change}\n**原因：** ${reason}\n**日期：** ${date}\n**操作员：** ${operator}`;
+            sendFeishuNotification('新增考勤记录', details);
+            
+            res.json({ message: '考勤分数记录保存成功' });
+        });
     });
 });
 
@@ -343,18 +524,44 @@ app.post('/api/attendance-scores', authenticateToken, (req, res) => {
 app.delete('/api/attendance-scores/:id', authenticateToken, (req, res) => {
     const { id } = req.params;
     
-    const query = 'DELETE FROM attendance_scores WHERE id = ?';
-    pool.execute(query, [id], (err, results) => {
+    // 先获取考勤记录信息用于通知
+    const getRecordQuery = `
+        SELECT asr.*, s.name as student_name, s.student_id, c.name as college_name, d.name as department_name
+        FROM attendance_scores asr
+        LEFT JOIN students s ON asr.student_id = s.id
+        LEFT JOIN colleges c ON s.college_id = c.id
+        LEFT JOIN departments d ON s.department_id = d.id
+        WHERE asr.id = ?
+    `;
+    pool.execute(getRecordQuery, [id], (err, recordResults) => {
         if (err) {
-            console.error('删除考勤分数记录失败:', err);
-            return res.status(500).json({ error: '删除考勤分数记录失败' });
+            console.error('获取考勤记录失败:', err);
+            return res.status(500).json({ error: '获取考勤记录失败' });
         }
         
-        if (results.affectedRows === 0) {
+        if (recordResults.length === 0) {
             return res.status(404).json({ error: '考勤分数记录不存在' });
         }
         
-        res.json({ message: '考勤分数记录删除成功' });
+        const record = recordResults[0];
+        
+        const query = 'DELETE FROM attendance_scores WHERE id = ?';
+        pool.execute(query, [id], (err, results) => {
+            if (err) {
+                console.error('删除考勤分数记录失败:', err);
+                return res.status(500).json({ error: '删除考勤分数记录失败' });
+            }
+            
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ error: '考勤分数记录不存在' });
+            }
+            
+            // 发送飞书通知
+            const details = `**学生姓名：** ${record.student_name}\n**学号：** ${record.student_id}\n**学院：** ${record.college_name}\n**部门：** ${record.department_name}\n**分数变化：** ${record.score_change > 0 ? '+' : ''}${record.score_change}\n**原因：** ${record.reason}\n**日期：** ${record.date}\n**操作员：** ${record.operator}`;
+            sendFeishuNotification('删除考勤记录', details);
+            
+            res.json({ message: '考勤分数记录删除成功' });
+        });
     });
 });
 
@@ -481,6 +688,9 @@ app.post('/api/students/import', authenticateToken, upload.single('file'), (req,
         return res.status(400).json({ error: '请选择Excel文件' });
     }
 
+    // 获取当前登录用户信息作为操作员
+    const operator = req.user ? req.user.name || req.user.username : '未知用户';
+
     try {
         // 读取Excel文件
         const workbook = XLSX.readFile(req.file.path);
@@ -604,6 +814,12 @@ app.post('/api/students/import', authenticateToken, upload.single('file'), (req,
                     fs.unlink(req.file.path, (err) => {
                         if (err) console.error('删除临时文件失败:', err);
                     });
+
+                    // 发送飞书通知
+                    const errorSummary = importResults.errors.length > 0 ? 
+                        `\n**错误详情：**\n${importResults.errors.slice(0, 3).map(err => `• ${err}`).join('\n')}${importResults.errors.length > 3 ? '\n• ...' : ''}` : '';
+                    const details = `**总记录数：** ${totalCount}\n**成功导入：** ${importResults.success}\n**失败数量：** ${importResults.failed}\n**操作员：** ${operator}${errorSummary}`;
+                    sendFeishuNotification('Excel批量导入', details);
 
                     res.json({
                         message: '导入完成',
