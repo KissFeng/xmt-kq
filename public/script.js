@@ -99,6 +99,12 @@ function showUserInfo() {
     const userInfo = document.getElementById('userInfo');
     const userName = document.getElementById('userName');
     const loginBtn = document.getElementById('loginBtn');
+    const welcomeMessage = document.getElementById('welcomeMessage');
+    const welcomeText = document.getElementById('welcomeText');
+    
+    // 在header中显示欢迎信息
+    welcomeText.textContent = `欢迎，${currentUser.name} ！`;
+    welcomeMessage.style.display = 'block';
     
     userName.textContent = `欢迎，${currentUser.name}`;
     userInfo.style.display = 'none'; // 隐藏右上角用户信息弹窗
@@ -167,6 +173,11 @@ function logout() {
     currentUser = null;
     
     const loginBtn = document.getElementById('loginBtn');
+    const welcomeMessage = document.getElementById('welcomeMessage');
+    
+    // 隐藏欢迎信息
+    welcomeMessage.style.display = 'none';
+    
     loginBtn.textContent = '登录';
     loginBtn.onclick = toggleLogin;
     
@@ -294,7 +305,7 @@ async function loadDepartmentStats(stats) {
         // 生成HTML
         const departmentCards = Object.values(departmentStats).map(dept => `
             <div class="department-card">
-                <h4>${dept.name}</h4>
+                <h3 style="text-align: center;">${dept.name}</h3>
                 <div class="department-metrics">
                     <div class="metric">
                         <div class="metric-label">学生人数</div>
