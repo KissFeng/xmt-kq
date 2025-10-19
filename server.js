@@ -137,7 +137,6 @@ const sendFeishuNotification = (operation, details) => {
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
 
 // 认证中间件
 const authenticateToken = (req, res, next) => {
@@ -227,18 +226,9 @@ app.get('/api/template/download', (req, res) => {
     res.sendFile(templatePath);
 });
 
-// 配置multer用于文件上传
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'uploads/');
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname);
-    }
-});
-
+// 配置multer用于文件上传（使用内存存储）
 const upload = multer({ 
-    storage: storage,
+    storage: multer.memoryStorage(),
     fileFilter: function (req, file, cb) {
         if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
             file.mimetype === 'application/vnd.ms-excel' ||
@@ -697,8 +687,8 @@ app.post('/api/students/import', authenticateToken, upload.single('file'), (req,
     const operator = req.user ? req.user.name || req.user.username : '未知用户';
 
     try {
-        // 读取Excel文件
-        const workbook = XLSX.readFile(req.file.path);
+        // 读取Excel文件（从内存缓冲区）
+        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const data = XLSX.utils.sheet_to_json(worksheet);
@@ -814,12 +804,6 @@ app.post('/api/students/import', authenticateToken, upload.single('file'), (req,
                 });
 
                 function sendResponse() {
-                    // 删除临时文件
-                    const fs = require('fs');
-                    fs.unlink(req.file.path, (err) => {
-                        if (err) console.error('删除临时文件失败:', err);
-                    });
-
                     // 发送飞书通知
                     const errorSummary = importResults.errors.length > 0 ? 
                         `\n**错误详情：**\n${importResults.errors.slice(0, 3).map(err => `• ${err}`).join('\n')}${importResults.errors.length > 3 ? '\n• ...' : ''}` : '';
@@ -842,6 +826,9 @@ app.post('/api/students/import', authenticateToken, upload.single('file'), (req,
         res.status(500).json({ error: 'Excel文件解析失败' });
     }
 });
+
+// 静态文件服务（必须在所有API路由之后）
+app.use(express.static('public'));
 
 // 首页路由
 app.get('/', (req, res) => {

@@ -931,19 +931,41 @@ document.getElementById('importForm').addEventListener('submit', async function(
             body: formData
         });
 
+        // 检查响应状态和内容类型
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('导入请求失败:', response.status, errorText);
+            
+            // 尝试解析JSON错误消息
+            try {
+                const errorData = JSON.parse(errorText);
+                showMessage(errorData.error || '导入失败', 'error');
+            } catch (e) {
+                // 如果不是JSON，显示原始错误信息
+                showMessage(`导入失败：${response.status} ${response.statusText}`, 'error');
+            }
+            return;
+        }
+
+        // 检查响应内容类型
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const responseText = await response.text();
+            console.error('服务器返回了非JSON响应:', responseText);
+            showMessage('服务器返回了无效的响应格式', 'error');
+            return;
+        }
+
         const result = await response.json();
 
-        if (response.ok) {
-            let message = `导入完成！总计：${result.total}条，成功：${result.success}条，失败：${result.failed}条`;
-            if (result.errors.length > 0) {
-                message += '\n\n错误详情：\n' + result.errors.join('\n');
-            }
-            showMessage(message, result.failed > 0 ? 'error' : 'success');
-            closeImportModal();
-            loadStudents(); // 刷新学生列表
-        } else {
-            showMessage(result.error || '导入失败', 'error');
+        // 处理成功响应
+        let message = `导入完成！总计：${result.total}条，成功：${result.success}条，失败：${result.failed}条`;
+        if (result.errors.length > 0) {
+            message += '\n\n错误详情：\n' + result.errors.join('\n');
         }
+        showMessage(message, result.failed > 0 ? 'error' : 'success');
+        closeImportModal();
+        loadStudents(); // 刷新学生列表
     } catch (error) {
         console.error('导入失败:', error);
         showMessage('导入失败：' + error.message, 'error');
