@@ -1,57 +1,42 @@
 #!/bin/bash
 
-echo "========================================"
-echo "新媒体考勤管理系统 - Docker部署"
-echo "========================================"
-echo
+echo "=== 考勤系统 Docker 部署脚本 ==="
 
-echo "检查Docker环境..."
+# 检查Docker是否安装
 if ! command -v docker &> /dev/null; then
-    echo "错误: 未找到Docker，请先安装Docker"
-    echo "安装指南: https://docs.docker.com/get-docker/"
+    echo "错误: Docker 未安装，请先安装 Docker"
     exit 1
 fi
 
-echo "检查Docker Compose..."
 if ! command -v docker-compose &> /dev/null; then
-    echo "错误: 未找到Docker Compose，请确保Docker已正确安装"
+    echo "错误: Docker Compose 未安装，请先安装 Docker Compose"
     exit 1
 fi
 
-echo "创建uploads目录..."
-mkdir -p uploads
-
-echo "停止并删除现有容器..."
-docker-compose down
-
-echo "构建并启动服务..."
-docker-compose up --build -d
-
-if [ $? -ne 0 ]; then
-    echo "错误: Docker服务启动失败"
-    exit 1
+# 创建环境变量文件
+if [ ! -f .env ]; then
+    echo "创建环境变量文件..."
+    cp env.example .env
+    echo "请检查并修改 .env 文件中的配置"
 fi
 
-echo
-echo "========================================"
-echo "部署成功！"
-echo "========================================"
-echo "考勤管理系统已启动，访问地址: http://localhost:9010"
-echo
-echo "管理命令:"
-echo "  查看日志: docker-compose logs -f"
-echo "  停止服务: docker-compose down"
-echo "  重启服务: docker-compose restart"
-echo
-echo "数据库信息:"
-echo "  主机: localhost:3307"
-echo "  数据库: attendance_system"
-echo "  用户名: attendance_user"
-echo "  密码: attendance_pass"
-echo
+# 构建并启动服务
+echo "构建并启动考勤系统..."
+docker-compose up -d --build
 
-echo "等待服务完全启动..."
+# 等待服务启动
+echo "等待服务启动..."
 sleep 10
 
-echo "正在检查服务状态..."
+# 检查服务状态
+echo "检查服务状态..."
 docker-compose ps
+
+echo ""
+echo "=== 部署完成 ==="
+echo "考勤系统访问地址: http://localhost:9010"
+echo "或访问: http://您的服务器IP:9010"
+echo ""
+echo "查看日志: docker-compose logs -f"
+echo "停止服务: docker-compose down"
+echo "重启服务: docker-compose restart"

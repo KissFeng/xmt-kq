@@ -1,65 +1,45 @@
 @echo off
-echo ========================================
-echo 新媒体考勤管理系统 - Docker部署
-echo ========================================
-echo.
+echo === 考勤系统 Docker 部署脚本 ===
 
-echo 检查Docker环境...
+REM 检查Docker是否安装
 docker --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo 错误: 未找到Docker，请先安装Docker Desktop
-    echo 下载地址: https://www.docker.com/products/docker-desktop
+    echo 错误: Docker 未安装，请先安装 Docker Desktop
     pause
     exit /b 1
 )
 
-echo 检查Docker Compose...
 docker-compose --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo 错误: 未找到Docker Compose，请确保Docker Desktop已正确安装
+    echo 错误: Docker Compose 未安装，请先安装 Docker Compose
     pause
     exit /b 1
 )
 
-echo 创建uploads目录...
-if not exist "uploads" mkdir uploads
-
-echo 停止并删除现有容器...
-docker-compose down
-
-echo 构建并启动服务...
-docker-compose up --build -d
-
-if %errorlevel% neq 0 (
-    echo 错误: Docker服务启动失败
-    pause
-    exit /b 1
+REM 创建环境变量文件
+if not exist .env (
+    echo 创建环境变量文件...
+    copy env.example .env
+    echo 请检查并修改 .env 文件中的配置
 )
 
-echo.
-echo ========================================
-echo 部署成功！
-echo ========================================
-echo 考勤管理系统已启动，访问地址: http://localhost:9010
-echo.
-echo 管理命令:
-echo   查看日志: docker-compose logs -f
-echo   停止服务: docker-compose down
-echo   重启服务: docker-compose restart
-echo.
-echo 数据库信息:
-echo   主机: localhost:3307
-echo   数据库: attendance_system
-echo   用户名: attendance_user
-echo   密码: attendance_pass
-echo.
+REM 构建并启动服务
+echo 构建并启动考勤系统...
+docker-compose up -d --build
 
-echo 等待服务完全启动...
+REM 等待服务启动
+echo 等待服务启动...
 timeout /t 10 /nobreak >nul
 
-echo 正在检查服务状态...
+REM 检查服务状态
+echo 检查服务状态...
 docker-compose ps
 
 echo.
-echo 按任意键退出...
-pause >nul
+echo === 部署完成 ===
+echo 考勤系统访问地址: http://localhost:9010
+echo.
+echo 查看日志: docker-compose logs -f
+echo 停止服务: docker-compose down
+echo 重启服务: docker-compose restart
+pause

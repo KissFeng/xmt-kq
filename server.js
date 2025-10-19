@@ -1,4 +1,9 @@
-require('dotenv').config();
+// 尝试加载dotenv，如果失败则忽略
+try {
+    require('dotenv').config();
+} catch (error) {
+    console.log('dotenv not available, using environment variables');
+}
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
