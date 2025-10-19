@@ -346,12 +346,13 @@ th, td {
     padding: 1.2rem;
     text-align: left;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    color: #2c3e50 !important;
 }
 
 th {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     font-weight: 600;
-    color: #2c3e50;
+    color: #2c3e50 !important;
     font-size: 0.9rem;
     letter-spacing: 1px;
     font-family: 'Inter', sans-serif;
@@ -610,6 +611,21 @@ input[type="file"]:focus {
     pointer-events: none;
 }
 
+/* readonly输入框样式 */
+.form-group input[readonly] {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.form-group input[readonly]:hover {
+    border-color: #e9ecef;
+    background-color: #f8f9fa;
+    box-shadow: none;
+    transform: none;
+}
+
 /* 模态框样式 */
 .modal {
     display: none;
@@ -687,10 +703,12 @@ form {
     border: 2px solid #e9ecef;
     border-radius: 8px;
     font-size: 0.95rem;
-    transition: border-color 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     font-family: 'Inter', sans-serif;
     font-weight: 400;
     letter-spacing: 0.3px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
 }
 
 .form-group input:focus,
@@ -698,6 +716,172 @@ form {
 .form-group textarea:focus {
     outline: none;
     border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 1);
+}
+
+/* 美化下拉框样式 */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667eea' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+    cursor: pointer;
+    position: relative;
+}
+
+select:hover {
+    border-color: #667eea;
+    background-color: rgba(255, 255, 255, 1);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    transform: translateY(-1px);
+}
+
+/* 为所有输入框添加悬停效果 */
+.form-group input:hover,
+.form-group textarea:hover {
+    border-color: #667eea;
+    background-color: rgba(255, 255, 255, 1);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+    transform: translateY(-1px);
+}
+
+/* 统一日期输入框样式，使其与下拉框保持一致 */
+input[type="date"],
+input[type="month"] {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667eea' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3ccalendar%3e%3crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3e%3c/rect%3e%3cline x1='16' y1='2' x2='16' y2='6'%3e%3c/line%3e%3cline x1='8' y1='2' x2='8' y2='6'%3e%3c/line%3e%3cline x1='3' y1='10' x2='21' y2='10'%3e%3c/line%3e%3c/calendar%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+    cursor: pointer;
+    min-width: 150px;
+    background-color: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.95) 100%);
+    border: 2px solid rgba(102, 126, 234, 0.1);
+    border-radius: 12px;
+    padding: 0.7rem 1rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input[type="date"]:hover,
+input[type="month"]:hover {
+    border-color: rgba(102, 126, 234, 0.3);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(248, 249, 250, 1) 100%);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+    transform: translateY(-2px);
+}
+
+input[type="date"]:focus,
+input[type="month"]:focus {
+    border-color: #667eea;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(248, 249, 250, 1) 100%);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2), 0 6px 20px rgba(102, 126, 234, 0.15);
+    transform: translateY(-3px);
+}
+
+select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2), 0 4px 12px rgba(102, 126, 234, 0.15);
+    transform: translateY(-2px);
+}
+
+/* 过滤器区域的下拉框和日期输入框特殊样式 */
+.filters select,
+.filters input[type="date"],
+.filters input[type="month"] {
+    min-width: 150px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.95) 100%);
+    border: 2px solid rgba(102, 126, 234, 0.1);
+    border-radius: 12px;
+    padding: 0.7rem 1rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.filters select:hover,
+.filters input[type="date"]:hover,
+.filters input[type="month"]:hover {
+    border-color: rgba(102, 126, 234, 0.3);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(248, 249, 250, 1) 100%);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+    transform: translateY(-2px);
+}
+
+.filters select:focus,
+.filters input[type="date"]:focus,
+.filters input[type="month"]:focus {
+    border-color: #667eea;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(248, 249, 250, 1) 100%);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2), 0 6px 20px rgba(102, 126, 234, 0.15);
+    transform: translateY(-3px);
+}
+
+/* 下拉框选项样式 */
+select option {
+    padding: 0.8rem;
+    background: white;
+    color: #2c3e50;
+    font-weight: 500;
+    border: none;
+}
+
+select option:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: #2c3e50;
+}
+
+select option:checked {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: rgb(156, 32, 32);
+}
+
+/* 确保下拉框文字在所有状态下都可见 */
+select {
+    color: #2c3e50 !important;
+}
+
+select:focus {
+    color: #2c3e50 !important;
+}
+
+select:hover {
+    color: #2c3e50 !important;
+}
+
+/* 通用文字颜色保护 - 确保所有文字都有足够对比度 */
+* {
+    color: inherit;
+}
+
+/* 强制确保重要文字元素的颜色 */
+h1, h2, h3, h4, h5, h6,
+p, span, div, td, th,
+select, input, textarea,
+button, .btn {
+    color: #2c3e50 !important;
+}
+
+/* 特殊处理白色文字的情况 */
+.nav-btn, .btn-primary, .btn-secondary, .btn-danger, .btn-warning, .btn-success, .btn-info {
+    color: white !important;
+}
+
+/* 确保表格行悬停时文字仍然可见 */
+tr:hover td {
+    color: #2c3e50 !important;
 }
 
 .form-actions {

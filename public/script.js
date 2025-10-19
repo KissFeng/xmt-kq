@@ -340,6 +340,17 @@ async function loadStudents() {
         const response = await fetch(url);
         const students = await response.json();
         
+        // 对学生进行排序：在职的排在前面，离职的排在后面
+        students.sort((a, b) => {
+            if (a.status === 'active' && b.status === 'inactive') {
+                return -1; // a排在b前面
+            } else if (a.status === 'inactive' && b.status === 'active') {
+                return 1; // b排在a前面
+            } else {
+                return 0; // 保持原有顺序
+            }
+        });
+        
         const tbody = document.querySelector('#studentsTable tbody');
         tbody.innerHTML = '';
         
@@ -594,7 +605,10 @@ async function loadStudentsForAttendance() {
         const response = await fetch('/api/students');
         const students = await response.json();
         
-        console.log('Loaded students for attendance:', students);
+        // 只筛选在职的学生
+        const activeStudents = students.filter(student => student.status === 'active');
+        
+        console.log('Loaded active students for attendance:', activeStudents);
         
         const studentFilter = document.getElementById('studentFilter');
         const attendanceStudent = document.getElementById('attendanceStudent');
@@ -607,7 +621,7 @@ async function loadStudentsForAttendance() {
         studentFilter.innerHTML = '<option value="">所有学生</option>';
         attendanceStudent.innerHTML = '<option value="">请选择学生</option>';
         
-        students.forEach(student => {
+        activeStudents.forEach(student => {
             const option1 = document.createElement('option');
             option1.value = student.id;
             option1.textContent = `${student.name} (${student.student_id})`;
@@ -619,7 +633,7 @@ async function loadStudentsForAttendance() {
             attendanceStudent.appendChild(option2);
         });
         
-        console.log('Student filter populated with', students.length, 'students');
+        console.log('Student filter populated with', activeStudents.length, 'active students');
     } catch (error) {
         console.error('加载学生列表失败:', error);
     }
@@ -634,6 +648,11 @@ function showAttendanceScoreModal(attendanceScoreId = null) {
     title.textContent = '添加考勤分数记录';
     form.reset();
     document.getElementById('attendanceScoreDate').value = new Date().toISOString().slice(0, 10);
+    
+    // 自动填充操作员字段为当前用户名
+    if (currentUser && currentUser.name) {
+        document.getElementById('operator').value = currentUser.name;
+    }
     
     // 加载学生列表
     loadStudentsForAttendance();
