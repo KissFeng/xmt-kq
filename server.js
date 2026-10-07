@@ -20,11 +20,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-// 飞书机器人配置
-const FEISHU_WEBHOOK_URL = 'https://open.feishu.cn/open-apis/bot/v2/hook/b75e2592-a969-48b3-8958-428539fe9784';
+// 飞书机器人配置 (从环境变量读取，可选)
+const FEISHU_WEBHOOK_URL = process.env.FEISHU_WEBHOOK_URL || '';
 
 // 飞书机器人通知函数
 const sendFeishuNotification = (operation, details) => {
+    if (!FEISHU_WEBHOOK_URL) {
+        return;
+    }
     // 根据操作类型选择不同的颜色和图标
     let color = "blue";
     let icon = "📝";
@@ -107,30 +110,35 @@ const sendFeishuNotification = (operation, details) => {
 
     const postData = JSON.stringify(message);
     
-    const options = {
-        hostname: 'open.feishu.cn',
-        port: 443,
-        path: '/open-apis/bot/v2/hook/b75e2592-a969-48b3-8958-428539fe9784',
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(postData)
-        }
-    };
+    try {
+        const webhookUrl = new URL(FEISHU_WEBHOOK_URL);
+        const options = {
+            hostname: webhookUrl.hostname,
+            port: webhookUrl.port || 443,
+            path: webhookUrl.pathname + webhookUrl.search,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(postData)
+            }
+        };
 
-    const req = https.request(options, (res) => {
-        console.log(`飞书通知发送状态: ${res.statusCode}`);
-        res.on('data', (d) => {
-            console.log('飞书通知响应:', d.toString());
+        const req = https.request(options, (res) => {
+            console.log(`飞书通知发送状态: ${res.statusCode}`);
+            res.on('data', (d) => {
+                console.log('飞书通知响应:', d.toString());
+            });
         });
-    });
 
-    req.on('error', (e) => {
-        console.error('飞书通知发送失败:', e);
-    });
+        req.on('error', (e) => {
+            console.error('飞书通知发送失败:', e);
+        });
 
-    req.write(postData);
-    req.end();
+        req.write(postData);
+        req.end();
+    } catch (err) {
+        console.error('飞书 Webhook URL 解析失败:', err);
+    }
 };
 
 // 中间件
@@ -243,11 +251,11 @@ const upload = multer({
 
 // 数据库连接配置
 const dbConfig = {
-    host: process.env.DB_HOST || '43.138.28.205',
-    port: process.env.DB_PORT || 3307,
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '123456',
-    database: process.env.DB_NAME || 'attendance_system',
+    host: process.env.MYSQL_HOST || process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
+    user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+    database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'attendance_system',
     charset: 'utf8mb4'
 };
 
